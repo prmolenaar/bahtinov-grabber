@@ -24,12 +24,12 @@
 
     public static bool operator ==(Complex lhs, Complex rhs)
     {
-      return lhs.x == rhs.x & lhs.y == rhs.y;
+      return double.Equals(lhs.x, rhs.x) & double.Equals(lhs.y, rhs.y);
     }
 
     public static bool operator !=(Complex lhs, Complex rhs)
     {
-      return lhs.x != rhs.x | lhs.y != rhs.y;
+      return !double.Equals(lhs.x, rhs.x) | !double.Equals(lhs.y, rhs.y);
     }
 
     public static Complex operator +(Complex lhs)
@@ -75,6 +75,26 @@
         complex.y = (-lhs.x + lhs.y * num1) / num2;
       }
       return complex;
+    }
+
+    public override bool Equals(object obj)
+    {
+      if (!(obj is Complex))
+      {
+        return false;
+      }
+
+      var complex = (Complex)obj;
+      return double.Equals(x, complex.x) &&
+           double.Equals(y, complex.y);
+    }
+
+    public override int GetHashCode()
+    {
+      var hashCode = 1502939027;
+      hashCode = hashCode * -1521134295 + x.GetHashCode();
+      hashCode = hashCode * -1521134295 + y.GetHashCode();
+      return hashCode;
     }
   }
 }

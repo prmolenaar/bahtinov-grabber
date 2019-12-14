@@ -32,7 +32,7 @@ namespace AP
       double num2 = System.Math.Abs(z.y);
       double num3 = num1 > num2 ? num1 : num2;
       double num4 = num1 < num2 ? num1 : num2;
-      if (num4 == 0.0)
+      if (double.Equals(num4, 0.0))
         return num3;
       double num5 = num4 / num3;
       return num3 * System.Math.Sqrt(1.0 + num5 * num5);

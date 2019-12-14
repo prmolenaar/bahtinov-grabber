@@ -44,15 +44,20 @@ namespace Bahtinov_grabber_autofocus
 
     private void captureArea(Point TopLeft, Point BottomRight)
     {
-      if (!(TopLeft != BottomRight))
+      if (!(TopLeft != BottomRight) || this.areaForm.areaPicture == null)
         return;
       this.activated = true;
-      Screen.GetBounds(Screen.GetBounds(Point.Empty));
       Size size = new Size(1 + BottomRight.X - TopLeft.X, 1 + BottomRight.Y - TopLeft.Y);
+      Rectangle srcRegion = new Rectangle(TopLeft, size);
+      Rectangle destRegion = new Rectangle(new Point(0, 0), size);
       if (this.picture.Size != size)
+      {
         this.picture = new Bitmap(size.Width, size.Height);
-      using (Graphics graphics = Graphics.FromImage((Image) this.picture))
-        graphics.CopyFromScreen(TopLeft, new Point(0, 0), this.picture.Size);
+      }
+      using (Graphics graphics = Graphics.FromImage((Image)this.picture))
+      {
+        graphics.DrawImage(this.areaForm.areaPicture, destRegion, srcRegion, GraphicsUnit.Pixel);
+      }
     }
   }
 }

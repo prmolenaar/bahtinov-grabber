@@ -14,10 +14,8 @@ namespace Bahtinov_grabber_autofocus
   public class MainForm : Form
   {
     private static int num_errorvalues = 150;
-    private int yzero = 1;
-    private float errortarget = 0.25f;
     private float[] bahtinov_angles = new float[3];
-    private int updateinterval = 100;
+    private int updateinterval = 1000;
     private float[] errorvalues = new float[MainForm.num_errorvalues];
     private IContainer components;
     private Button StartButton;
@@ -41,21 +39,14 @@ namespace Bahtinov_grabber_autofocus
     private CheckBox RedCheckBox;
     private CheckBox GreenCheckBox;
     private GroupBox RGBgroupBox;
-    private Button donate_button;
     private CheckBox RotatingFocusserCheckBox;
-    private bool logging_enabled;
-    private bool text_on_bitmap;
+    private bool logging_enabled = false;
+    private bool text_on_bitmap = false;
     private Grabber bahtinov_grabber;
     private DateTime DateTimePrevious;
     private Bitmap buffered_picture;
-    private float error_previous;
     private float error;
-    private float error0;
-    private float error1;
-    private float error2;
-    private float sensitivity;
     private bool centered;
-    private int autofocus;
     private Timer update_timer;
     private int errorcounter;
 
@@ -97,7 +88,6 @@ namespace Bahtinov_grabber_autofocus
       this.RedCheckBox = new CheckBox();
       this.GreenCheckBox = new CheckBox();
       this.RGBgroupBox = new GroupBox();
-      this.donate_button = new Button();
       this.RotatingFocusserCheckBox = new CheckBox();
       ((ISupportInitialize) this.pictureBox).BeginInit();
       this.groupBox2.SuspendLayout();
@@ -294,14 +284,6 @@ namespace Bahtinov_grabber_autofocus
       this.RGBgroupBox.TabIndex = 18;
       this.RGBgroupBox.TabStop = false;
       this.RGBgroupBox.Text = "RGB channels used";
-      this.donate_button.Location = new Point(11, 4);
-      this.donate_button.Name = "donate_button";
-      this.donate_button.Size = new Size(158, 25);
-      this.donate_button.TabIndex = 12;
-      this.donate_button.Text = "Donate if you like (Paypal)";
-      this.donate_button.UseVisualStyleBackColor = true;
-      this.donate_button.Click += new EventHandler(this.donate_button_Click);
-      this.donate_button.Enabled = false;
       this.RotatingFocusserCheckBox.AutoSize = true;
       this.RotatingFocusserCheckBox.Location = new Point(204, 12);
       this.RotatingFocusserCheckBox.Name = "RotatingFocusserCheckBox";
@@ -312,8 +294,6 @@ namespace Bahtinov_grabber_autofocus
       this.RotatingFocusserCheckBox.CheckedChanged += new EventHandler(this.RotatingFocusserCheckBox_CheckedChanged);
       this.AutoScaleDimensions = new SizeF(6f, 13f);
       this.AutoScaleMode = AutoScaleMode.Font;
-      this.ClientSize = new Size(518, 423);
-      this.Controls.Add((Control) this.donate_button);
       this.Controls.Add((Control) this.RGBgroupBox);
       this.Controls.Add((Control) this.RotatingFocusserCheckBox);
       this.Controls.Add((Control) this.MaskAnglesLabel);
@@ -326,9 +306,9 @@ namespace Bahtinov_grabber_autofocus
       this.Controls.Add((Control) this.groupBox2);
       this.Controls.Add((Control) this.pictureBox);
       this.Controls.Add((Control) this.StartButton);
-      this.MinimumSize = new Size(526, 450);
+      this.MinimumSize = new Size(610, 470);
       this.Name = "MainForm";
-      this.Text = "Bahtinov grabber  V17.0 June 23 2011";
+      this.Text = "Bahtinov Grabber  V18.0 December 14 2019";
       this.Load += new EventHandler(this.MainForm_Load);
       ((ISupportInitialize) this.pictureBox).EndInit();
       this.groupBox2.ResumeLayout(false);
@@ -370,7 +350,6 @@ namespace Bahtinov_grabber_autofocus
 
     private void StartButton_Click(object sender, EventArgs e)
     {
-      this.autofocus = 0;
       this.centered = false;
       if (this.bahtinov_grabber == null)
       {
@@ -394,7 +373,7 @@ namespace Bahtinov_grabber_autofocus
       {
         if (!this.logging_enabled)
           return;
-        File.AppendAllText("c:/bahtinovgrabber.txt", DateTime.Now.ToString() + " " + logtext + "\r\n");
+        File.AppendAllText("bahtinovgrabber.log", DateTime.Now.ToString() + " " + logtext + "\r\n");
       }
       catch
       {
@@ -442,7 +421,7 @@ namespace Bahtinov_grabber_autofocus
       this.pictureBox.Image = (Image) this.bahtinov_grabber.picture;
       this.buffered_picture = new Bitmap((Image) this.bahtinov_grabber.picture);
       this.ShowLines(ref this.bahtinov_grabber.picture, ref this.bahtinov_angles);
-      this.Size = new Size(Math.Max(158, this.pictureBox.Size.Width + 264), Math.Max(320, this.pictureBox.Size.Height + 195));
+      this.Size = new Size(Math.Max(610, this.pictureBox.Location.X + this.pictureBox.Size.Width + 50), Math.Max(470, this.pictureBox.Location.Y + this.pictureBox.Size.Height + 50));
     }
 
     private void ShowLines(ref Bitmap bmp, ref float[] bahtinov_angles)
@@ -494,10 +473,6 @@ namespace Bahtinov_grabber_autofocus
       float val2 = (float) (((double) height + 1.0) / 2.0);
       float[] numArray3 = new float[3];
       float[] numArray4 = new float[3];
-      float num14 = 0.0f;
-      float num15 = 0.0f;
-      float num16 = 0.0f;
-      float num17 = 0.0f;
       if ((double) bahtinov_angles[0] == 0.0 & (double) bahtinov_angles[1] == 0.0 & (double) bahtinov_angles[2] == 0.0)
       {
         int length2 = 180;
@@ -735,10 +710,27 @@ namespace Bahtinov_grabber_autofocus
           }
         }
       }
-      int num31 = 2;
-      Pen pen = new Pen(Color.Yellow, (float) num31);
+
+      DrawLines(val1, val2, numArray3, numArray4);
+
+      this.centered = false;
+      if (!this.RotatingFocusserCheckBox.Checked)
+        return;
+      bahtinov_angles = new float[3];
+    }
+
+    private void DrawLines(float val1, float val2, float[] numArray3, float[] numArray4)
+    {
+      int yzero = 1;
+      int penWidth = 1;
+      Pen pen = new Pen(Color.Yellow, (float)penWidth);
       pen.DashStyle = DashStyle.Dash;
       Graphics graphics = Graphics.FromImage(this.pictureBox.Image);
+      int imageHeight = this.pictureBox.Height;
+      float num14 = 0.0f;
+      float num15 = 0.0f;
+      float num16 = 0.0f;
+      float num17 = 0.0f;
       float num32 = 0.0f;
       float num33 = 0.0f;
       float num34 = 0.0f;
@@ -746,18 +738,18 @@ namespace Bahtinov_grabber_autofocus
       for (int index = 0; index < 3; ++index)
       {
         float num13 = Math.Min(val1, val2);
-        float x1 = val1 + -num13 * (float) Math.Cos((double) numArray3[index]) + (numArray4[index] - val2) * (float) Math.Sin((double) numArray3[index]);
-        float x2 = val1 + num13 * (float) Math.Cos((double) numArray3[index]) + (numArray4[index] - val2) * (float) Math.Sin((double) numArray3[index]);
-        float num18 = val2 + -num13 * (float) Math.Sin((double) numArray3[index]) + (float) -((double) numArray4[index] - (double) val2) * (float) Math.Cos((double) numArray3[index]);
-        float num19 = val2 + num13 * (float) Math.Sin((double) numArray3[index]) + (float) -((double) numArray4[index] - (double) val2) * (float) Math.Cos((double) numArray3[index]);
+        float x1 = val1 + -num13 * (float)Math.Cos((double)numArray3[index]) + (numArray4[index] - val2) * (float)Math.Sin((double)numArray3[index]);
+        float x2 = val1 + num13 * (float)Math.Cos((double)numArray3[index]) + (numArray4[index] - val2) * (float)Math.Sin((double)numArray3[index]);
+        float num18 = val2 + -num13 * (float)Math.Sin((double)numArray3[index]) + (float)-((double)numArray4[index] - (double)val2) * (float)Math.Cos((double)numArray3[index]);
+        float num19 = val2 + num13 * (float)Math.Sin((double)numArray3[index]) + (float)-((double)numArray4[index] - (double)val2) * (float)Math.Cos((double)numArray3[index]);
         if (index == 0)
         {
           float num20 = x1;
           float num21 = x2;
           float num22 = num18;
           float num23 = num19;
-          num14 = (float) (((double) num23 - (double) num22) / ((double) num21 - (double) num20));
-          num16 = (float) (-(double) num20 * (((double) num23 - (double) num22) / ((double) num21 - (double) num20))) + num22;
+          num14 = (float)(((double)num23 - (double)num22) / ((double)num21 - (double)num20));
+          num16 = (float)(-(double)num20 * (((double)num23 - (double)num22) / ((double)num21 - (double)num20))) + num22;
         }
         else if (index == 1)
         {
@@ -765,8 +757,8 @@ namespace Bahtinov_grabber_autofocus
           num34 = x2;
           num33 = num18;
           num35 = num19;
-          double num20 = ((double) num35 - (double) num33) / ((double) num34 - (double) num32);
-          double num21 = ((double) num35 - (double) num33) / ((double) num34 - (double) num32);
+          double num20 = ((double)num35 - (double)num33) / ((double)num34 - (double)num32);
+          double num21 = ((double)num35 - (double)num33) / ((double)num34 - (double)num32);
         }
         else if (index == 2)
         {
@@ -774,8 +766,8 @@ namespace Bahtinov_grabber_autofocus
           float num21 = x2;
           float num22 = num18;
           float num23 = num19;
-          num15 = (float) (((double) num23 - (double) num22) / ((double) num21 - (double) num20));
-          num17 = (float) (-(double) num20 * (((double) num23 - (double) num22) / ((double) num21 - (double) num20))) + num22;
+          num15 = (float)(((double)num23 - (double)num22) / ((double)num21 - (double)num20));
+          num17 = (float)(-(double)num20 * (((double)num23 - (double)num22) / ((double)num21 - (double)num20))) + num22;
         }
         switch (index)
         {
@@ -789,17 +781,17 @@ namespace Bahtinov_grabber_autofocus
             pen.Color = Color.Green;
             break;
         }
-        graphics.DrawLine(pen, x1, (float) height - num18 + (float) this.yzero, x2, (float) height - num19 + (float) this.yzero);
+        graphics.DrawLine(pen, x1, (float)imageHeight - num18 + (float)yzero, x2, (float)imageHeight - num19 + (float)yzero);
       }
-      float x3 = (float) (-((double) num16 - (double) num17) / ((double) num14 - (double) num15));
+      float x3 = (float)(-((double)num16 - (double)num17) / ((double)num14 - (double)num15));
       float num36 = num14 * x3 + num16;
       pen.Color = Color.Blue;
-      int num37 = num31 * 4;
-      graphics.DrawEllipse(pen, x3 - (float) num37, (float) height - num36 - (float) num37 + (float) this.yzero, (float) (num37 * 2), (float) (num37 * 2));
-      float num38 = (float) (((double) x3 - (double) num32) * ((double) num34 - (double) num32) + ((double) num36 - (double) num33) * ((double) num35 - (double) num33)) / (float) (((double) num34 - (double) num32) * ((double) num34 - (double) num32) + ((double) num35 - (double) num33) * ((double) num35 - (double) num33));
+      int num37 = penWidth * 4;
+      graphics.DrawEllipse(pen, x3 - (float)num37, (float)imageHeight - num36 - (float)num37 + (float)yzero, (float)(num37 * 2), (float)(num37 * 2));
+      float num38 = (float)(((double)x3 - (double)num32) * ((double)num34 - (double)num32) + ((double)num36 - (double)num33) * ((double)num35 - (double)num33)) / (float)(((double)num34 - (double)num32) * ((double)num34 - (double)num32) + ((double)num35 - (double)num33) * ((double)num35 - (double)num33));
       float num39 = num32 + num38 * (num34 - num32);
       float num40 = num33 + num38 * (num35 - num33);
-      float num41 = (float) Math.Sqrt(((double) x3 - (double) num39) * ((double) x3 - (double) num39) + ((double) num36 - (double) num40) * ((double) num36 - (double) num40));
+      float num41 = (float)Math.Sqrt(((double)x3 - (double)num39) * ((double)x3 - (double)num39) + ((double)num36 - (double)num40) * ((double)num36 - (double)num40));
       float num42 = 0.0f;
       float num43 = x3 - num39;
       float num44 = num36 - num40;
@@ -807,10 +799,11 @@ namespace Bahtinov_grabber_autofocus
       float num46 = num35 - num33;
       try
       {
-        num42 = (float) -Math.Sign((float) ((double) num43 * (double) num46 - (double) num44 * (double) num45));
+        num42 = (float)-Math.Sign((float)((double)num43 * (double)num46 - (double)num44 * (double)num45));
       }
       catch
       {
+        MessageBox.Show("Oops!");
       }
       this.error = num42 * num41;
       this.errorvalues[this.errorcounter % MainForm.num_errorvalues] = this.error;
@@ -833,61 +826,61 @@ namespace Bahtinov_grabber_autofocus
           ++num48;
         }
       }
-      double num49 = (double) num47;
+      double num49 = (double)num47;
       int num50 = num48;
       int num51 = 1;
       int num52 = num50 + num51;
-      double num53 = (double) num50;
-      float num54 = (float) (num49 / num53);
-      float x4 = x3 + (float) (((double) num39 - (double) x3) * 20.0);
-      float num55 = num36 + (float) (((double) num40 - (double) num36) * 20.0);
+      double num53 = (double)num50;
+      float num54 = (float)(num49 / num53);
+      float x4 = x3 + (float)(((double)num39 - (double)x3) * 20.0);
+      float num55 = num36 + (float)(((double)num40 - (double)num36) * 20.0);
       pen.Color = Color.Red;
-      pen.Width = (float) num31;
-      int num56 = num31 * 4;
-      graphics.DrawEllipse(pen, x4 - (float) num56, (float) height - num55 - (float) num56 + (float) this.yzero, (float) (num56 * 2), (float) (num56 * 2));
-      pen.Width = (float) num31;
-      graphics.DrawLine(pen, new PointF(x4, (float) height - num55 + (float) this.yzero), new PointF(x3, (float) height - num36 + (float) this.yzero));
+      pen.Width = (float)penWidth;
+      int num56 = penWidth * 4;
+      graphics.DrawEllipse(pen, x4 - (float)num56, (float)imageHeight - num55 - (float)num56 + (float)yzero, (float)(num56 * 2), (float)(num56 * 2));
+      pen.Width = (float)penWidth;
+      graphics.DrawLine(pen, new PointF(x4, (float)imageHeight - num55 + (float)yzero), new PointF(x3, (float)imageHeight - num36 + (float)yzero));
       Font font = new Font("Arial", 8f);
       SolidBrush solidBrush = new SolidBrush(Color.White);
       string str1 = "focus error: " + (num42 * num41).ToString("F2") + " pixels";
       this.logMessage(str1);
       if (this.text_on_bitmap)
-        graphics.DrawString(str1, font, (Brush) solidBrush, (PointF) new Point(10, 10));
+        graphics.DrawString(str1, font, (Brush)solidBrush, (PointF)new Point(10, 10));
       this.FocusErrorLabel.Text = str1;
       string str2 = (MainForm.num_errorvalues / (1000 / this.updateinterval)).ToString() + "s average: " + num54.ToString("F2") + " pixels";
       this.logMessage(str2);
       if (this.text_on_bitmap)
-        graphics.DrawString(str2, font, (Brush) solidBrush, (PointF) new Point(10, 20));
+        graphics.DrawString(str2, font, (Brush)solidBrush, (PointF)new Point(10, 20));
       this.AverageFocusErrorLabel.Text = str2;
       float num57 = 57.29578f;
-      float num58 = (float) Math.PI / 180f;
-      float num59 = Math.Abs((float) (((double) numArray3[2] - (double) numArray3[0]) / 2.0));
+      float num58 = (float)Math.PI / 180f;
+      float num59 = Math.Abs((float)(((double)numArray3[2] - (double)numArray3[0]) / 2.0));
       string str3 = (num59 * num57).ToString("F0") + " degree Bahtinov";
-      float num60 = (float) (9.0 / 32.0 * ((double) (float) this.DiameterNumericUpDown.Value / ((double) (float) this.FocalLengthNumericUpDown.Value * (double) (float) this.PixelSizeNumericUpDown.Value)) * (1.0 + Math.Cos(45.0 * (double) num58) * (1.0 + Math.Tan((double) num59))));
+      float num60 = (float)(9.0 / 32.0 * ((double)(float)this.DiameterNumericUpDown.Value / ((double)(float)this.FocalLengthNumericUpDown.Value * (double)(float)this.PixelSizeNumericUpDown.Value)) * (1.0 + Math.Cos(45.0 * (double)num58) * (1.0 + Math.Tan((double)num59))));
       this.MaskTypeLabel.Text = str3;
       this.MaskAnglesLabel.Text = "angles: " + (num57 * numArray3[0]).ToString("F1") + " " + (num57 * numArray3[1]).ToString("F1") + " " + (num57 * numArray3[2]).ToString("F1");
       float num61 = num42 * num41 / num60;
       string str4 = "calculated absolute focus error: " + num61.ToString("F2") + " microns";
       this.logMessage(str4);
       if (this.text_on_bitmap)
-        graphics.DrawString(str4, font, (Brush) solidBrush, (PointF) new Point(10, 30));
+        graphics.DrawString(str4, font, (Brush)solidBrush, (PointF)new Point(10, 30));
       this.AbsFocusErrorLabel.Text = str4;
-      float num62 = (float) (8.99999974990351E-07 * ((double) (float) this.FocalLengthNumericUpDown.Value / (double) (float) this.DiameterNumericUpDown.Value) * ((double) (float) this.FocalLengthNumericUpDown.Value / (double) (float) this.DiameterNumericUpDown.Value));
-      bool flag = Math.Abs((double) num61 * 1E-06) < (double) Math.Abs(num62);
+      float num62 = (float)(8.99999974990351E-07 * ((double)(float)this.FocalLengthNumericUpDown.Value / (double)(float)this.DiameterNumericUpDown.Value) * ((double)(float)this.FocalLengthNumericUpDown.Value / (double)(float)this.DiameterNumericUpDown.Value));
+      bool flag = Math.Abs((double)num61 * 1E-06) < (double)Math.Abs(num62);
       string str5 = "within critical focus: " + (flag ? "YES" : "NO");
       this.logMessage(str5);
       if (this.text_on_bitmap)
-        graphics.DrawString(str5, font, (Brush) solidBrush, (PointF) new Point(10, 40));
+        graphics.DrawString(str5, font, (Brush)solidBrush, (PointF)new Point(10, 40));
       this.WithinCriticalFocusLabel.Text = str5;
       if (flag)
       {
         pen.Color = Color.Yellow;
-        pen.Width = (float) num31;
+        pen.Width = (float)penWidth;
         int num13 = 32;
         while (num13 < 128)
         {
           int num18 = num13;
-          graphics.DrawEllipse(pen, x3 - (float) num18, (float) height - num36 - (float) num18 + (float) this.yzero, (float) (num18 * 2), (float) (num18 * 2));
+          graphics.DrawEllipse(pen, x3 - (float)num18, (float)imageHeight - num36 - (float)num18 + (float)yzero, (float)(num18 * 2), (float)(num18 * 2));
           num13 += 32;
         }
         if (this.SoundCheckBox.Checked)
@@ -895,16 +888,12 @@ namespace Bahtinov_grabber_autofocus
       }
       if (!this.centered)
       {
-        this.bahtinov_grabber.areaForm.CurrentTopLeft.X -= (int) ((double) (bmp.Width / 2) - ((double) x3 + (double) num39) / 2.0);
-        this.bahtinov_grabber.areaForm.CurrentTopLeft.Y += (int) ((double) (bmp.Height / 2) - ((double) num36 + (double) num40) / 2.0);
-        this.bahtinov_grabber.areaForm.CurrentBottomRight.X -= (int) ((double) (bmp.Width / 2) - ((double) x3 + (double) num39) / 2.0);
-        this.bahtinov_grabber.areaForm.CurrentBottomRight.Y += (int) ((double) (bmp.Height / 2) - ((double) num36 + (double) num40) / 2.0);
+        this.bahtinov_grabber.areaForm.CurrentTopLeft.X -= (int)((double)(this.pictureBox.Width / 2) - ((double)x3 + (double)num39) / 2.0);
+        this.bahtinov_grabber.areaForm.CurrentTopLeft.Y += (int)((double)(this.pictureBox.Height / 2) - ((double)num36 + (double)num40) / 2.0);
+        this.bahtinov_grabber.areaForm.CurrentBottomRight.X -= (int)((double)(this.pictureBox.Width / 2) - ((double)x3 + (double)num39) / 2.0);
+        this.bahtinov_grabber.areaForm.CurrentBottomRight.Y += (int)((double)(this.pictureBox.Height / 2) - ((double)num36 + (double)num40) / 2.0);
         this.centered = true;
       }
-      this.centered = false;
-      if (!this.RotatingFocusserCheckBox.Checked)
-        return;
-      bahtinov_angles = new float[3];
     }
 
     private void center_button_Click(object sender, EventArgs e)

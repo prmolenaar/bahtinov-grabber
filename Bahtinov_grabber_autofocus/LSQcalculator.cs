@@ -36,17 +36,17 @@ namespace Bahtinov_grabber_autofocus
           y[index] = (double) numArray1[index];
         leastsquares.buildgeneralleastsquares(ref y, ref w, ref numArray2, length, 3, ref c);
         float num = (float) (-c[1] / (2.0 * c[0]));
-        float[] numArray3;
-        float[] numArray4 = numArray3 = (float[]) null;
-        double[] numArray5;
-        double[] numArray6 = numArray5 = (double[]) null;
-        double[] numArray7;
-        if (c[0] < 0.0)
-        {
-          numArray7 = (double[]) null;
-          return num;
-        }
-        numArray7 = (double[]) null;
+        //float[] numArray3;
+        //float[] numArray4 = numArray3 = (float[]) null;
+        //double[] numArray5;
+        //double[] numArray6 = numArray5 = (double[]) null;
+        //double[] numArray7;
+        //if (c[0] < 0.0)
+        //{
+        //  numArray7 = (double[]) null;
+        //  return num;
+        //}
+        //numArray7 = (double[]) null;
         return num;
       }
       catch
