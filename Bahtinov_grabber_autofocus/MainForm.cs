@@ -13,7 +13,7 @@ namespace Bahtinov_grabber_autofocus
 {
   public class MainForm : Form
   {
-    private static int num_errorvalues = 150;
+    private static int num_errorvalues = 15;
     private float[] bahtinov_angles = new float[3] { 0.0f, 0.0f, 0.0f };
     private int updateinterval = 1000;
     private float[] errorvalues = new float[MainForm.num_errorvalues];
@@ -45,7 +45,6 @@ namespace Bahtinov_grabber_autofocus
     private bool text_on_bitmap = false;
     private Grabber bahtinov_grabber;
     private Bitmap buffered_picture;
-    private float error;
     private bool centered;
     private Timer update_timer;
     private int errorcounter;
@@ -759,6 +758,7 @@ namespace Bahtinov_grabber_autofocus
           numArray3[index] = bahtinov_angles[index];
         }
       }
+
       for (int index1 = 0; index1 < 3; ++index1)
       {
         for (int index2 = index1; index2 < 3; ++index2)
@@ -810,56 +810,45 @@ namespace Bahtinov_grabber_autofocus
       bahtinov_angles = new float[3];
     }
 
-    private void DrawLines(float val1, float val2, float[] bahtinovAngles, float[] numArray4)
+    private void DrawLines(float halfWidht, float halfHeight, float[] bahtinovAngles, float[] numArray4)
     {
       // Take bahtinov angles and draw the 3 angle lines
-      int yzero = 1;
       int penWidth = 1;
       Pen pen = new Pen(Color.Yellow, (float)penWidth);
       pen.DashStyle = DashStyle.Dash;
       Graphics graphics = Graphics.FromImage(this.pictureBox.Image);
       int imageHeight = this.pictureBox.Height;
-      float num14 = 0.0f;
-      float num15 = 0.0f;
-      float num16 = 0.0f;
-      float num17 = 0.0f;
-      float num32 = 0.0f;
-      float num33 = 0.0f;
-      float num34 = 0.0f;
-      float num35 = 0.0f;
+      float slopeLine0 = 0.0f;
+      float slopeLine2 = 0.0f;
+      float yOffsetLine0 = 0.0f;
+      float yOffsetLine2 = 0.0f;
+      float centerLineX1 = 0.0f;
+      float centerLineY1 = 0.0f;
+      float centerLineX2 = 0.0f;
+      float centerLineY2 = 0.0f;
       for (int index = 0; index < 3; ++index)
       {
-        float num13 = Math.Min(val1, val2);
-        float x1 = val1 + -num13 * (float)Math.Cos((double)bahtinovAngles[index]) + (numArray4[index] - val2) * (float)Math.Sin((double)bahtinovAngles[index]);
-        float x2 = val1 + num13 * (float)Math.Cos((double)bahtinovAngles[index]) + (numArray4[index] - val2) * (float)Math.Sin((double)bahtinovAngles[index]);
-        float num18 = val2 + -num13 * (float)Math.Sin((double)bahtinovAngles[index]) + (float)-((double)numArray4[index] - (double)val2) * (float)Math.Cos((double)bahtinovAngles[index]);
-        float num19 = val2 + num13 * (float)Math.Sin((double)bahtinovAngles[index]) + (float)-((double)numArray4[index] - (double)val2) * (float)Math.Cos((double)bahtinovAngles[index]);
+        float smallestHalf = Math.Min(halfWidht, halfHeight);
+        float x1 = halfWidht + -smallestHalf * (float)Math.Cos((double)bahtinovAngles[index]) + (numArray4[index] - halfHeight) * (float)Math.Sin((double)bahtinovAngles[index]); // x of bottom of line (+ is right)
+        float x2 = halfWidht + smallestHalf * (float)Math.Cos((double)bahtinovAngles[index]) + (numArray4[index] - halfHeight) * (float)Math.Sin((double)bahtinovAngles[index]); // x of top of line (+ is right)
+        float y1 = halfHeight + -smallestHalf * (float)Math.Sin((double)bahtinovAngles[index]) + (float)-((double)numArray4[index] - (double)halfHeight) * (float)Math.Cos((double)bahtinovAngles[index]); // y of bottom of line (+ is up)
+        float y2 = halfHeight + smallestHalf * (float)Math.Sin((double)bahtinovAngles[index]) + (float)-((double)numArray4[index] - (double)halfHeight) * (float)Math.Cos((double)bahtinovAngles[index]); // y of top of line (+ is up)
         if (index == 0)
-        {
-          float num20 = x1;
-          float num21 = x2;
-          float num22 = num18;
-          float num23 = num19;
-          num14 = (float)(((double)num23 - (double)num22) / ((double)num21 - (double)num20));
-          num16 = (float)(-(double)num20 * (((double)num23 - (double)num22) / ((double)num21 - (double)num20))) + num22;
+        { 
+          slopeLine0 = (float)(((double)y2 - (double)y1) / ((double)x2 - (double)x1));
+          yOffsetLine0 = (float)(-(double)x1 * slopeLine0) + y1;
         }
         else if (index == 1)
         {
-          num32 = x1;
-          num34 = x2;
-          num33 = num18;
-          num35 = num19;
-          double num20 = ((double)num35 - (double)num33) / ((double)num34 - (double)num32);
-          double num21 = ((double)num35 - (double)num33) / ((double)num34 - (double)num32);
+          centerLineX1 = x1;
+          centerLineX2 = x2;
+          centerLineY1 = y1;
+          centerLineY2 = y2;
         }
         else if (index == 2)
         {
-          float num20 = x1;
-          float num21 = x2;
-          float num22 = num18;
-          float num23 = num19;
-          num15 = (float)(((double)num23 - (double)num22) / ((double)num21 - (double)num20));
-          num17 = (float)(-(double)num20 * (((double)num23 - (double)num22) / ((double)num21 - (double)num20))) + num22;
+          slopeLine2 = (float)(((double)y2 - (double)y1) / ((double)x2 - (double)x1));
+          yOffsetLine2 = (float)(-(double)x1 * slopeLine2) + y1;
         }
         switch (index)
         {
@@ -873,121 +862,114 @@ namespace Bahtinov_grabber_autofocus
             pen.Color = Color.Green;
             break;
         }
-        graphics.DrawLine(pen, x1, (float)imageHeight - num18 + (float)yzero, x2, (float)imageHeight - num19 + (float)yzero);
+        graphics.DrawLine(pen, x1, (float)imageHeight - y1, x2, (float)imageHeight - y2);
       }
 
-
-      float x3 = (float)(-((double)num16 - (double)num17) / ((double)num14 - (double)num15));
-      float num36 = num14 * x3 + num16;
+      // Calculate position of center circle
+      float centerCircleX = (float)(-((double)yOffsetLine0 - (double)yOffsetLine2) / ((double)slopeLine0 - (double)slopeLine2));
+      float centerCircleY = slopeLine0 * centerCircleX + yOffsetLine0;
       pen.Color = Color.Blue;
-      int num37 = penWidth * 4;
-      graphics.DrawEllipse(pen, x3 - (float)num37, (float)imageHeight - num36 - (float)num37 + (float)yzero, (float)(num37 * 2), (float)(num37 * 2));
-      float num38 = (float)(((double)x3 - (double)num32) * ((double)num34 - (double)num32) + ((double)num36 - (double)num33) * ((double)num35 - (double)num33)) / (float)(((double)num34 - (double)num32) * ((double)num34 - (double)num32) + ((double)num35 - (double)num33) * ((double)num35 - (double)num33));
-      float num39 = num32 + num38 * (num34 - num32);
-      float num40 = num33 + num38 * (num35 - num33);
-      float num41 = (float)Math.Sqrt(((double)x3 - (double)num39) * ((double)x3 - (double)num39) + ((double)num36 - (double)num40) * ((double)num36 - (double)num40));
-      float num42 = 0.0f;
-      float num43 = x3 - num39;
-      float num44 = num36 - num40;
-      float num45 = num34 - num32;
-      float num46 = num35 - num33;
+      int centerCircleRadius = 4;
+      graphics.DrawEllipse(pen, centerCircleX - (float)centerCircleRadius, (float)imageHeight - centerCircleY - (float)centerCircleRadius, (float)(centerCircleRadius * 2), (float)(centerCircleRadius * 2));
+
+      // Calculate position of offset circle (calculation of focus error)
+      float num38 = (float)(((double)centerCircleX - (double)centerLineX1) * ((double)centerLineX2 - (double)centerLineX1) +
+        ((double)centerCircleY - (double)centerLineY1) * ((double)centerLineY2 - (double)centerLineY1)) / (float)(((double)centerLineX2 - (double)centerLineX1) * ((double)centerLineX2 - (double)centerLineX1) +
+        ((double)centerLineY2 - (double)centerLineY1) * ((double)centerLineY2 - (double)centerLineY1));
+      float num39 = centerLineX1 + num38 * (centerLineX2 - centerLineX1);
+      float num40 = centerLineY1 + num38 * (centerLineY2 - centerLineY1);
+      float focusError = (float)Math.Sqrt(((double)centerCircleX - (double)num39) * ((double)centerCircleX - (double)num39) + ((double)centerCircleY - (double)num40) * ((double)centerCircleY - (double)num40));
+      float errorSign = 0.0f;
+      float num43 = centerCircleX - num39;
+      float num44 = centerCircleY - num40;
+      float num45 = centerLineX2 - centerLineX1;
+      float num46 = centerLineY2 - centerLineY1;
       try
       {
-        num42 = (float)-Math.Sign((float)((double)num43 * (double)num46 - (double)num44 * (double)num45));
+        errorSign = (float)-Math.Sign((float)((double)num43 * (double)num46 - (double)num44 * (double)num45));
       }
       catch
       {
         MessageBox.Show("Oops!");
       }
-      this.error = num42 * num41;
-      this.errorvalues[this.errorcounter % MainForm.num_errorvalues] = this.error;
+      this.errorvalues[this.errorcounter % MainForm.num_errorvalues] = (errorSign * focusError);
       ++this.errorcounter;
-      float num47 = 0.0f;
-      int num48 = 0;
-      if (this.errorcounter >= MainForm.num_errorvalues)
+      float sumOfErrors = 0.0f;
+      int numErrorsInSum = 0;
+      for (int index = 0; index < Math.Min(this.errorcounter, MainForm.num_errorvalues); ++index)
       {
-        for (int index = 0; index < MainForm.num_errorvalues; ++index)
-        {
-          num47 += this.errorvalues[index];
-          ++num48;
-        }
+        sumOfErrors += this.errorvalues[index];
+        ++numErrorsInSum;
       }
-      else
-      {
-        for (int index = 0; index < this.errorcounter; ++index)
-        {
-          num47 += this.errorvalues[index];
-          ++num48;
-        }
-      }
-      double num49 = (double)num47;
-      int num50 = num48;
-      int num51 = 1;
-      int num52 = num50 + num51;
-      double num53 = (double)num50;
-      float num54 = (float)(num49 / num53);
-      float x4 = x3 + (float)(((double)num39 - (double)x3) * 20.0);
-      float num55 = num36 + (float)(((double)num40 - (double)num36) * 20.0);
+      float averageError = (float)(sumOfErrors / (float)numErrorsInSum);
+
+      float offsetMultiplication = 20.0f;
+      float offsetCircleX = centerCircleX + (float)(((double)num39 - (double)centerCircleX) * offsetMultiplication);
+      float offsetCircleY = centerCircleY + (float)(((double)num40 - (double)centerCircleY) * offsetMultiplication);
       pen.Color = Color.Red;
       pen.Width = (float)penWidth;
-      int num56 = penWidth * 4;
-      graphics.DrawEllipse(pen, x4 - (float)num56, (float)imageHeight - num55 - (float)num56 + (float)yzero, (float)(num56 * 2), (float)(num56 * 2));
+      int offsetCircleRadius = 4;
+      graphics.DrawEllipse(pen, offsetCircleX - (float)offsetCircleRadius, (float)imageHeight - offsetCircleY - (float)offsetCircleRadius, (float)(offsetCircleRadius * 2), (float)(offsetCircleRadius * 2));
+
+      // Draw line between center circle and offset circle
       pen.Width = (float)penWidth;
-      graphics.DrawLine(pen, new PointF(x4, (float)imageHeight - num55 + (float)yzero), new PointF(x3, (float)imageHeight - num36 + (float)yzero));
-      Font font = new Font("Arial", 8f);
-      SolidBrush solidBrush = new SolidBrush(Color.White);
-      string str1 = "focus error: " + (num42 * num41).ToString("F2") + " pixels";
-      this.logMessage(str1);
-      if (this.text_on_bitmap)
-        graphics.DrawString(str1, font, (Brush)solidBrush, (PointF)new Point(10, 10));
+      graphics.DrawLine(pen, new PointF(offsetCircleX, (float)imageHeight - offsetCircleY), new PointF(centerCircleX, (float)imageHeight - centerCircleY));
+
+      // Fill in number in UI
+      //Font font = new Font("Arial", 8f);
+      //SolidBrush solidBrush = new SolidBrush(Color.White);
+      string str1 = "focus error: " + (errorSign * focusError).ToString("F2") + " pixels";
+      //this.logMessage(str1);
+      //if (this.text_on_bitmap)
+      //  graphics.DrawString(str1, font, (Brush)solidBrush, (PointF)new Point(10, 10));
       this.FocusErrorLabel.Text = str1;
-      string str2 = (MainForm.num_errorvalues / (1000 / this.updateinterval)).ToString() + "s average: " + num54.ToString("F2") + " pixels";
-      this.logMessage(str2);
-      if (this.text_on_bitmap)
-        graphics.DrawString(str2, font, (Brush)solidBrush, (PointF)new Point(10, 20));
+      string str2 = (MainForm.num_errorvalues / (1000 / this.updateinterval)).ToString() + "s average: " + averageError.ToString("F2") + " pixels";
+      //this.logMessage(str2);
+      //if (this.text_on_bitmap)
+      //  graphics.DrawString(str2, font, (Brush)solidBrush, (PointF)new Point(10, 20));
       this.AverageFocusErrorLabel.Text = str2;
-      float num57 = 57.29578f; // 57.29578 = 180 / PI = 1 Rad in degrees
+      float oneRad = 57.29578f; // 57.29578 = 180 / PI = 1 Rad in degrees
       float num58 = (float)Math.PI / 180f;
       float num59 = Math.Abs((float)(((double)bahtinovAngles[2] - (double)bahtinovAngles[0]) / 2.0));
-      string str3 = (num59 * num57).ToString("F0") + " degree Bahtinov";
+      string str3 = (num59 * oneRad).ToString("F0") + " degree Bahtinov";
       float num60 = (float)(9.0 / 32.0 * ((double)(float)this.DiameterNumericUpDown.Value / ((double)(float)this.FocalLengthNumericUpDown.Value *
         (double)(float)this.PixelSizeNumericUpDown.Value)) * (1.0 + Math.Cos(45.0 * (double)num58) * (1.0 + Math.Tan((double)num59))));
       this.MaskTypeLabel.Text = str3;
-      this.MaskAnglesLabel.Text = "angles: " + (num57 * bahtinovAngles[0]).ToString("F1") + " " + (num57 * bahtinovAngles[1]).ToString("F1") + " " +
-        (num57 * bahtinovAngles[2]).ToString("F1");
-      float num61 = num42 * num41 / num60;
+      this.MaskAnglesLabel.Text = "angles: " + (oneRad * bahtinovAngles[0]).ToString("F1") + " " + (oneRad * bahtinovAngles[1]).ToString("F1") + " " +
+        (oneRad * bahtinovAngles[2]).ToString("F1");
+      float num61 = errorSign * focusError / num60;
       string str4 = "calculated absolute focus error: " + num61.ToString("F2") + " microns";
-      this.logMessage(str4);
-      if (this.text_on_bitmap)
-        graphics.DrawString(str4, font, (Brush)solidBrush, (PointF)new Point(10, 30));
+      //this.logMessage(str4);
+      //if (this.text_on_bitmap)
+      //  graphics.DrawString(str4, font, (Brush)solidBrush, (PointF)new Point(10, 30));
       this.AbsFocusErrorLabel.Text = str4;
-      float num62 = (float)(8.99999974990351E-07 * ((double)(float)this.FocalLengthNumericUpDown.Value / (double)(float)this.DiameterNumericUpDown.Value) * ((double)(float)this.FocalLengthNumericUpDown.Value / (double)(float)this.DiameterNumericUpDown.Value));
+      float num62 = (float)(8.99999974990351E-07 * ((double)(float)this.FocalLengthNumericUpDown.Value / (double)(float)this.DiameterNumericUpDown.Value) *
+        ((double)(float)this.FocalLengthNumericUpDown.Value / (double)(float)this.DiameterNumericUpDown.Value));
       bool flag = Math.Abs((double)num61 * 1E-06) < (double)Math.Abs(num62);
       string str5 = "within critical focus: " + (flag ? "YES" : "NO");
-      this.logMessage(str5);
-      if (this.text_on_bitmap)
-        graphics.DrawString(str5, font, (Brush)solidBrush, (PointF)new Point(10, 40));
+      //this.logMessage(str5);
+      //if (this.text_on_bitmap)
+      //  graphics.DrawString(str5, font, (Brush)solidBrush, (PointF)new Point(10, 40));
       this.WithinCriticalFocusLabel.Text = str5;
       if (flag)
       {
         pen.Color = Color.Yellow;
         pen.Width = (float)penWidth;
-        int num13 = 32;
-        while (num13 < 128)
+        int inFocusMarkerRadius = 32;
+        while (inFocusMarkerRadius < 128)
         {
-          int num18 = num13;
-          graphics.DrawEllipse(pen, x3 - (float)num18, (float)imageHeight - num36 - (float)num18 + (float)yzero, (float)(num18 * 2), (float)(num18 * 2));
-          num13 += 32;
+          graphics.DrawEllipse(pen, centerCircleX - (float)inFocusMarkerRadius, (float)imageHeight - centerCircleY - (float)inFocusMarkerRadius, (float)(inFocusMarkerRadius * 2), (float)(inFocusMarkerRadius * 2));
+          inFocusMarkerRadius += 32;
         }
         if (this.SoundCheckBox.Checked)
           SystemSounds.Exclamation.Play();
       }
       if (!this.centered)
       {
-        this.bahtinov_grabber.areaForm.CurrentTopLeft.X -= (int)((double)(this.pictureBox.Width / 2) - ((double)x3 + (double)num39) / 2.0);
-        this.bahtinov_grabber.areaForm.CurrentTopLeft.Y += (int)((double)(this.pictureBox.Height / 2) - ((double)num36 + (double)num40) / 2.0);
-        this.bahtinov_grabber.areaForm.CurrentBottomRight.X -= (int)((double)(this.pictureBox.Width / 2) - ((double)x3 + (double)num39) / 2.0);
-        this.bahtinov_grabber.areaForm.CurrentBottomRight.Y += (int)((double)(this.pictureBox.Height / 2) - ((double)num36 + (double)num40) / 2.0);
+        this.bahtinov_grabber.areaForm.CurrentTopLeft.X -= (int)((double)(this.pictureBox.Width / 2) - ((double)centerCircleX + (double)num39) / 2.0);
+        this.bahtinov_grabber.areaForm.CurrentTopLeft.Y += (int)((double)(this.pictureBox.Height / 2) - ((double)centerCircleY + (double)num40) / 2.0);
+        this.bahtinov_grabber.areaForm.CurrentBottomRight.X -= (int)((double)(this.pictureBox.Width / 2) - ((double)centerCircleX + (double)num39) / 2.0);
+        this.bahtinov_grabber.areaForm.CurrentBottomRight.Y += (int)((double)(this.pictureBox.Height / 2) - ((double)centerCircleY + (double)num40) / 2.0);
         this.centered = true;
       }
     }
