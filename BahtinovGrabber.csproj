@@ -55,16 +55,12 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="spline3.cs" />
-    <Compile Include="svd.cs" />
     <Compile Include="reflections.cs" />
     <Compile Include="bdsvd.cs" />
     <Compile Include="rotations.cs" />
-    <Compile Include="qr.cs" />
     <Compile Include="bidiagonal.cs" />
     <Compile Include="leastsquares.cs" />
     <Compile Include="lq.cs" />
-    <Compile Include="blas.cs" />
     <Compile Include="AP\Complex.cs" />
     <Compile Include="AP\rcommstate.cs" />
     <Compile Include="AP\Math.cs" />

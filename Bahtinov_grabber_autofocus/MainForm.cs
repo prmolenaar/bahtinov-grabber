@@ -14,12 +14,13 @@ namespace Bahtinov_grabber_autofocus
   public class MainForm : Form
   {
     private static int num_errorvalues = 150;
-    private float[] bahtinov_angles = new float[3];
+    private float[] bahtinov_angles = new float[3] { 0.0f, 0.0f, 0.0f };
     private int updateinterval = 1000;
     private float[] errorvalues = new float[MainForm.num_errorvalues];
     private IContainer components;
     private Button StartButton;
     private PictureBox pictureBox;
+    private PictureBox resultBox;
     private ToolTip toolTip1;
     private GroupBox groupBox2;
     private Label label2;
@@ -43,7 +44,6 @@ namespace Bahtinov_grabber_autofocus
     private bool logging_enabled = false;
     private bool text_on_bitmap = false;
     private Grabber bahtinov_grabber;
-    private DateTime DateTimePrevious;
     private Bitmap buffered_picture;
     private float error;
     private bool centered;
@@ -69,6 +69,7 @@ namespace Bahtinov_grabber_autofocus
       ComponentResourceManager componentResourceManager = new ComponentResourceManager(typeof (MainForm));
       this.StartButton = new Button();
       this.pictureBox = new PictureBox();
+      this.resultBox = new PictureBox();
       this.toolTip1 = new ToolTip(this.components);
       this.groupBox2 = new GroupBox();
       this.label2 = new Label();
@@ -90,6 +91,7 @@ namespace Bahtinov_grabber_autofocus
       this.RGBgroupBox = new GroupBox();
       this.RotatingFocusserCheckBox = new CheckBox();
       ((ISupportInitialize) this.pictureBox).BeginInit();
+      ((ISupportInitialize)this.resultBox).BeginInit();
       this.groupBox2.SuspendLayout();
       this.PixelSizeNumericUpDown.BeginInit();
       this.DiameterNumericUpDown.BeginInit();
@@ -110,6 +112,12 @@ namespace Bahtinov_grabber_autofocus
       this.pictureBox.SizeMode = PictureBoxSizeMode.AutoSize;
       this.pictureBox.TabIndex = 1;
       this.pictureBox.TabStop = false;
+
+      this.resultBox.Location = new Point(258 + 245 + 25, 175);
+      this.resultBox.Name = "pictureBox";
+      this.resultBox.Size = new Size(245, 230);
+      this.resultBox.SizeMode = PictureBoxSizeMode.AutoSize;
+      this.resultBox.BorderStyle = BorderStyle.FixedSingle;
       this.toolTip1.AutoPopDelay = 5000;
       this.toolTip1.InitialDelay = 500;
       this.toolTip1.ReshowDelay = 100;
@@ -305,6 +313,7 @@ namespace Bahtinov_grabber_autofocus
       this.Controls.Add((Control) this.SoundCheckBox);
       this.Controls.Add((Control) this.groupBox2);
       this.Controls.Add((Control) this.pictureBox);
+      this.Controls.Add((Control) this.resultBox);
       this.Controls.Add((Control) this.StartButton);
       this.MinimumSize = new Size(610, 470);
       this.Name = "MainForm";
@@ -360,7 +369,7 @@ namespace Bahtinov_grabber_autofocus
       else
       {
         this.update_timer.Stop();
-        this.bahtinov_angles = new float[3];
+        this.bahtinov_angles = new float[3] { 0.0f, 0.0f, 0.0f };
         this.bahtinov_grabber.ReStart();
         this.update_timer.Start();
       }
@@ -421,176 +430,257 @@ namespace Bahtinov_grabber_autofocus
       this.pictureBox.Image = (Image) this.bahtinov_grabber.picture;
       this.buffered_picture = new Bitmap((Image) this.bahtinov_grabber.picture);
       this.ShowLines(ref this.bahtinov_grabber.picture, ref this.bahtinov_angles);
-      this.Size = new Size(Math.Max(610, this.pictureBox.Location.X + this.pictureBox.Size.Width + 50), Math.Max(470, this.pictureBox.Location.Y + this.pictureBox.Size.Height + 50));
+      this.resultBox.Location = new Point(this.pictureBox.Location.X + this.pictureBox.Size.Width + 25, this.resultBox.Location.Y);
+      this.Size = new Size(Math.Max(610, this.resultBox.Location.X + this.resultBox.Size.Width + 50), Math.Max(470, this.pictureBox.Location.Y + this.pictureBox.Size.Height + 50));
+    }
+
+    private Bitmap createBitmapFromArray(float[,] imgData, int width, int height)
+    {
+      byte[] bytes = new byte[width * height * 3];
+      int idx = 0;
+      for (int indexY = 0; indexY < height; ++indexY)
+      {
+        for (int indexX = 0; indexX < width; ++indexX)
+        {
+          byte byteValue = (byte)Math.Floor(imgData[indexX, indexY] * 255);
+          bytes[idx++] = byteValue; // R
+          bytes[idx++] = byteValue; // G
+          bytes[idx++] = byteValue; // B
+        }
+      }
+
+      var columns = width;
+      var rows = height;
+      var stride = columns * 4;
+      var newbytes = PadLines(bytes, rows, columns);
+      var im = new Bitmap(columns, rows, stride,
+                          PixelFormat.Format24bppRgb,
+                          Marshal.UnsafeAddrOfPinnedArrayElement(newbytes, 0));
+      return im;
+    }
+
+    static byte[] PadLines(byte[] bytes, int rows, int columns)
+    {
+      //The old and new offsets could be passed through parameters,
+      //but I hardcoded them here as a sample.
+      var currentStride = columns * 3;
+      var newStride = columns * 4;
+      var newBytes = new byte[newStride * rows];
+      for (var i = 0; i < rows; i++)
+        Buffer.BlockCopy(bytes, currentStride * i, newBytes, newStride * i, currentStride);
+      return newBytes;
     }
 
     private void ShowLines(ref Bitmap bmp, ref float[] bahtinov_angles)
     {
+      // *** COPY DATA ***
       Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
       BitmapData bitmapdata = bmp.LockBits(rect, ImageLockMode.ReadWrite, bmp.PixelFormat);
       IntPtr scan0 = bitmapdata.Scan0;
-      int length1 = bitmapdata.Stride * bmp.Height;
-      byte[] numArray1 = new byte[length1];
-      Marshal.Copy(scan0, numArray1, 0, length1);
-      Marshal.Copy(numArray1, 0, scan0, length1);
+      int dataSize = bitmapdata.Stride * bmp.Height;
+      byte[] rawByteStream = new byte[dataSize];
+      Marshal.Copy(scan0, rawByteStream, 0, dataSize);
+      Marshal.Copy(rawByteStream, 0, scan0, dataSize);
       bmp.UnlockBits(bitmapdata);
+
       int width = bmp.Width;
       int height = bmp.Height;
-      float num1 = (width < height ? 0.5f * (float) Math.Sqrt(2.0) * (float) width : 0.5f * (float) Math.Sqrt(2.0) * (float) height) - 8f;
-      int num2 = (int) (0.5 * ((double) width - (double) num1));
-      int num3 = (int) (0.5 * ((double) width + (double) num1));
-      int num4 = (int) (0.5 * ((double) height - (double) num1));
-      int num5 = (int) (0.5 * ((double) height + (double) num1));
-      int num6 = 1;
-      int num7 = num6;
-      float num8 = this.RedCheckBox.Checked ? 1f : 0.0f;
-      float num9 = this.GreenCheckBox.Checked ? 1f : 0.0f;
-      float num10 = this.BlueCheckBox.Checked ? 1f : 0.0f;
-      float[,] numArray2 = new float[width, height];
-      float num11 = 0.0f;
-      float num12 = 0.0f;
-      for (int index1 = num2; index1 < num3; ++index1)
+      float outerCircleRadius = (width < height ? 0.5f * (float) Math.Sqrt(2.0) * (float) width : 0.5f * (float) Math.Sqrt(2.0) * (float) height) - 8f;
+      int leftEdge = (int) (0.5 * ((double) width - (double) outerCircleRadius));
+      int rightEdge = (int) (0.5 * ((double) width + (double) outerCircleRadius));
+      int topEdge = (int) (0.5 * ((double) height - (double) outerCircleRadius));
+      int bottomEdge = (int) (0.5 * ((double) height + (double) outerCircleRadius));
+      int incX = 1;
+      int incY = 1;
+
+      // *** GET DATA PART OF SQUARE THAT MATCHES INNER CIRCLE IN IMAGE AND STORE GRAYSCALE VALUE ***
+      // NOTE: Make sure at least 1 channel is switched on
+      float useRedChannel = this.RedCheckBox.Checked ? 1f : 0.0f;
+      float useGreenChannel = this.GreenCheckBox.Checked ? 1f : 0.0f;
+      float useBlueChannel = this.BlueCheckBox.Checked ? 1f : 0.0f;
+      float divideFactor = Math.Max(1.0f, useRedChannel + useGreenChannel + useBlueChannel);
+      float[,] normalizedImageData = new float[width, height];
+      //float num11 = 0.0f;
+      //float num12 = 0.0f;
+      for (int indexX = leftEdge; indexX < rightEdge; ++indexX)
       {
-        for (int index2 = num4; index2 < num5; ++index2)
+        for (int indexY = topEdge; indexY < bottomEdge; ++indexY)
         {
-          int index3 = (index1 + index2 * width) * bitmapdata.Stride / width;
-          numArray2[index1, index2] = (float) ((double) num8 * (double) numArray1[index3] + (double) num9 * (double) numArray1[index3 + 1] + (double) num10 * (double) numArray1[index3 + 2]);
-          numArray2[index1, index2] /= 3f;
-          numArray2[index1, index2] /= (float) byte.MaxValue;
-          numArray2[index1, index2] = (float) Math.Sqrt((double) numArray2[index1, index2]);
-          num11 += numArray2[index1, index2];
-          ++num12;
+          int index3 = (indexX + indexY * width) * bitmapdata.Stride / width;
+          normalizedImageData[indexX, indexY] = (float) ((double) useRedChannel * (double) rawByteStream[index3] + (double) useGreenChannel * (double) rawByteStream[index3 + 1] + (double) useBlueChannel * (double) rawByteStream[index3 + 2]);
+          normalizedImageData[indexX, indexY] /= divideFactor; // 3f; // NOTE: Is incorrect, if some channels are switched off, then those should not be encounted for, divide by less then 3
+          normalizedImageData[indexX, indexY] /= (float) byte.MaxValue;
+          normalizedImageData[indexX, indexY] = (float) Math.Sqrt((double) normalizedImageData[indexX, indexY]);
+          //num11 += numArray2[index1, index2];
+          //++num12;
         }
       }
-      try
+      //try
+      //{
+      //  float num13 = num11 / num12;
+      //}
+      //catch
+      //{
+      //}
+
+      float halfWidth = (float) (((double) width + 1.0) / 2.0);
+      float halfHeight = (float) (((double) height + 1.0) / 2.0);
+      float[] numArray3 = new float[3]; // Only used for non rotating focus (RotatingFocusserCheckBox not checked)
+      float[] numArray4 = new float[3]; // Only used for non rotating focus (RotatingFocusserCheckBox not checked)
+      bool bahtinov_angles_empty = (float.Equals(bahtinov_angles[0], 0.0f) & float.Equals(bahtinov_angles[1], 0.0f) & float.Equals(bahtinov_angles[2], 0.0f));
+      if (bahtinov_angles_empty) // OR this.RotatingFocusserCheckBox.Checked
       {
-        float num13 = num11 / num12;
-      }
-      catch
-      {
-      }
-      float val1 = (float) (((double) width + 1.0) / 2.0);
-      float val2 = (float) (((double) height + 1.0) / 2.0);
-      float[] numArray3 = new float[3];
-      float[] numArray4 = new float[3];
-      if ((double) bahtinov_angles[0] == 0.0 & (double) bahtinov_angles[1] == 0.0 & (double) bahtinov_angles[2] == 0.0)
-      {
-        int length2 = 180;
-        float num13 = 3.141593f / (float) length2;
-        float[] numArray5 = new float[length2];
-        float[] numArray6 = new float[length2];
+        // *** ROTATE DATA PART 180 DEGREES AND CHECK FOR EACH ANGLE FOR A LINE ***
+        int steps = 180;
+        float radPerStep = (float) Math.PI / (float) steps;
+        float[] averageRowIndexPerAngle = new float[steps];
+        float[] highestRowAveragePerAngle = new float[steps];
         float[,] numArray7 = new float[width, height];
-        for (int index1 = 0; index1 < length2; ++index1)
+        for (int index1 = 0; index1 < steps; ++index1)
         {
-          float num18 = num13 * (float) index1;
+          // *** ROTATE DATA PART 1 STEP ***
+          float num18 = radPerStep * (float) index1;
           float num19 = (float) Math.Sin((double) num18);
           float num20 = (float) Math.Cos((double) num18);
-          int index2 = num2;
-          while (index2 < num3)
+          int index2 = leftEdge;
+          while (index2 < rightEdge)
           {
-            int index3 = num4;
-            while (index3 < num5)
+            int index3 = topEdge;
+            while (index3 < bottomEdge)
             {
-              float num21 = (float) index2 - val1;
-              float num22 = (float) index3 - val2;
-              float num23 = (float) ((double) val1 + (double) num21 * (double) num20 + (double) num22 * (double) num19);
-              float num24 = (float) ((double) val2 - (double) num21 * (double) num19 + (double) num22 * (double) num20);
+              float num21 = (float) index2 - halfWidth;
+              float num22 = (float) index3 - halfHeight;
+              float num23 = (float) ((double) halfWidth + (double) num21 * (double) num20 + (double) num22 * (double) num19);
+              float num24 = (float) ((double) halfHeight - (double) num21 * (double) num19 + (double) num22 * (double) num20);
               int index4 = (int) Math.Floor((double) num23);
               int index5 = (int) Math.Ceiling((double) num23);
               int index6 = (int) Math.Floor((double) num24);
               int index7 = (int) Math.Ceiling((double) num24);
               float num25 = num23 - (float) index4;
               float num26 = num24 - (float) index6;
-              numArray7[index2, index3] = (float) ((double) numArray2[index4, index6] * (1.0 - (double) num25) * (1.0 - (double) num26) + (double) numArray2[index5, index6] * (double) num25 * (1.0 - (double) num26) + (double) numArray2[index5, index7] * (double) num25 * (double) num26 + (double) numArray2[index4, index7] * (1.0 - (double) num25) * (double) num26);
-              index3 += num7;
+              numArray7[index2, index3] = (float) ((double) normalizedImageData[index4, index6] * (1.0 - (double) num25) * (1.0 - (double) num26) + (double) normalizedImageData[index5, index6] * (double) num25 * (1.0 - (double) num26) + (double) normalizedImageData[index5, index7] * (double) num25 * (double) num26 + (double) normalizedImageData[index4, index7] * (1.0 - (double) num25) * (double) num26);
+              index3 += incY;
             }
-            index2 += num6;
+            index2 += incX;
           }
-          float[] numArray8 = new float[height];
+
+          //Bitmap intermediate = createBitmapFromArray(numArray7, width, height);
+          //this.resultBox.Image = (Image)intermediate;
+          //this.resultBox.Size = new Size(intermediate.Width, intermediate.Height);
+
+          // *** CALCULATE AVERAGE PIXEL VALUE OF EACH ROW AND STORE HIGHEST VALUE PER ANGLE/STEP ***
+          float[] rowAverage = new float[height];
+          // Clear numArray8
           for (int index3 = 0; index3 < height; ++index3)
-            numArray8[index3] = 0.0f;
-          int index8 = num4;
-          while (index8 < num5)
           {
-            int num21 = 0;
-            int index3 = num2;
-            while (index3 < num3)
+            rowAverage[index3] = 0.0f;
+          }
+          // Loop over each row
+          int index8 = topEdge;
+          while (index8 < bottomEdge)
+          {
+            int numEdges = 0;
+            // Loop over each column
+            int index3 = leftEdge;
+            while (index3 < rightEdge)
             {
-              numArray8[index8] += numArray7[index3, index8];
-              ++num21;
-              index3 += num6;
+              rowAverage[index8] += numArray7[index3, index8];
+              ++numEdges;
+              index3 += incX;
             }
-            numArray8[index8] /= (float) num21;
-            index8 += num7;
+            rowAverage[index8] /= (float)numEdges;
+            index8 += incY;
           }
-          int num27 = 1;
-          float[] numArray9 = new float[height];
-          for (int index3 = 0; index3 < height; ++index3)
-            numArray9[index3] = numArray8[index3];
-          for (int index3 = num4; index3 < num5; ++index3)
+
+          // Calculate row average over multiple rows (if num27 > 1)
+          int num27 = 1; // If values is greater then 1, then below code has effect
+          if (num27 > 1)
           {
-            numArray9[index3] = 0.0f;
-            for (int index4 = -(num27 - 1) / 2; index4 <= (num27 - 1) / 2; ++index4)
-              numArray9[index3] += numArray8[index3 + index4] / (float) num27;
-          }
-          for (int index3 = 0; index3 < height; ++index3)
-            numArray8[index3] = numArray9[index3];
-          float num28 = -1f;
-          float num29 = -1f;
-          for (int index3 = num4; index3 < num5; ++index3)
-          {
-            if ((double) numArray8[index3] > (double) num28)
+            // Copy numArray8 into numArray9
+            float[] numArray9 = new float[height];
+            for (int index3 = 0; index3 < height; ++index3)
             {
-              num29 = (float) index3;
-              num28 = numArray8[index3];
+              numArray9[index3] = rowAverage[index3];
+            }
+
+            // Determine new average over multiple rows
+            for (int index3 = topEdge; index3 < bottomEdge; ++index3)
+            {
+              numArray9[index3] = 0.0f;
+              for (int index4 = -(num27 - 1) / 2; index4 <= (num27 - 1) / 2; ++index4)
+              {
+                numArray9[index3] += rowAverage[index3 + index4] / (float)num27;
+              }
+            }
+
+            // Copy new average back to numArray8
+            for (int index3 = 0; index3 < height; ++index3)
+            {
+              rowAverage[index3] = numArray9[index3];
+            }
+          }
+
+          // Store higest row average and corresponding row index per anle/step
+          float highestRowAverage = -1f;
+          float rowAverageIndex = -1f;
+          for (int index3 = topEdge; index3 < bottomEdge; ++index3)
+          {
+            if ((double) rowAverage[index3] > (double) highestRowAverage)
+            {
+              rowAverageIndex = (float) index3;
+              highestRowAverage = rowAverage[index3];
             }
           }
           try
           {
-            numArray5[index1] = num29;
-            numArray6[index1] = num28;
+            averageRowIndexPerAngle[index1] = rowAverageIndex;
+            highestRowAveragePerAngle[index1] = highestRowAverage;
           }
           catch
           {
-            int num21 = (int) MessageBox.Show("foutje");
+            MessageBox.Show("Foutje bedankt!");
           }
         }
+
+        // *** CALCULATE BAHTINOV ANGLES ***
         int num30 = 0;
+        int num50 = (int)(0.0872664600610733 / (double)radPerStep); // 0.0872664600610733 = 5 degrees in rad
         for (int index1 = 0; index1 < 3; ++index1)
         {
           float num18 = -1f;
           float num19 = -1f;
           float num20 = -1f;
-          for (int index2 = 0; index2 < length2; ++index2)
+          for (int index2 = 0; index2 < steps; ++index2)
           {
-            if ((double) numArray6[index2] > (double) num18)
+            if ((double) highestRowAveragePerAngle[index2] > (double) num18)
             {
-              num18 = numArray6[index2];
-              num20 = numArray5[index2];
-              num19 = (float) index2 * num13;
+              num18 = highestRowAveragePerAngle[index2];
+              num20 = averageRowIndexPerAngle[index2];
+              num19 = (float) index2 * radPerStep;
               num30 = index2;
             }
           }
-          numArray4[index1] = num20;
-          numArray3[index1] = num19;
+          numArray4[index1] = num20; // Only used for non rotating focus
+          numArray3[index1] = num19; // Only used for non rotating focus
           bahtinov_angles[index1] = num19;
-          int num21 = (int) (0.0872664600610733 / (double) num13);
-          for (int index2 = num30 - num21; index2 < num30 + num21; ++index2)
+          for (int index2 = num30 - num50; index2 < num30 + num50; ++index2)
           {
-            int index3 = (index2 + length2) % length2;
+            int index3 = (index2 + steps) % steps;
             try
             {
-              numArray6[index3] = 0.0f;
+              highestRowAveragePerAngle[index3] = 0.0f;
             }
             catch
             {
-              int num22 = (int) MessageBox.Show("kut");
+              MessageBox.Show("Kwalitatief uitermate teleurstellend");
             }
           }
         }
-        this.DateTimePrevious = DateTime.Now;
+
         if (this.RotatingFocusserCheckBox.Checked)
-          bahtinov_angles = new float[3];
+        {
+          bahtinov_angles = new float[3] { 0.0f, 0.0f, 0.0f };
+        }
       }
       else
       {
@@ -603,47 +693,48 @@ namespace Bahtinov_grabber_autofocus
           float num13 = bahtinov_angles[index1];
           float num18 = (float) Math.Sin((double) num13);
           float num19 = (float) Math.Cos((double) num13);
-          int index2 = num2;
-          while (index2 < num3)
+          int index2 = leftEdge;
+          while (index2 < rightEdge)
           {
-            int index3 = num4;
-            while (index3 < num5)
+            int index3 = topEdge;
+            while (index3 < bottomEdge)
             {
-              float num20 = (float) index2 - val1;
-              float num21 = (float) index3 - val2;
-              float num22 = (float) ((double) val1 + (double) num20 * (double) num19 + (double) num21 * (double) num18);
-              float num23 = (float) ((double) val2 - (double) num20 * (double) num18 + (double) num21 * (double) num19);
+              float num20 = (float) index2 - halfWidth;
+              float num21 = (float) index3 - halfHeight;
+              float num22 = (float) ((double) halfWidth + (double) num20 * (double) num19 + (double) num21 * (double) num18);
+              float num23 = (float) ((double) halfHeight - (double) num20 * (double) num18 + (double) num21 * (double) num19);
               int index4 = (int) Math.Floor((double) num22);
               int index5 = (int) Math.Ceiling((double) num22);
               int index6 = (int) Math.Floor((double) num23);
               int index7 = (int) Math.Ceiling((double) num23);
               float num24 = num22 - (float) index4;
               float num25 = num23 - (float) index6;
-              numArray7[index2, index3] = (float) ((double) numArray2[index4, index6] * (1.0 - (double) num24) * (1.0 - (double) num25) + (double) numArray2[index5, index6] * (double) num24 * (1.0 - (double) num25) + (double) numArray2[index5, index7] * (double) num24 * (double) num25 + (double) numArray2[index4, index7] * (1.0 - (double) num24) * (double) num25);
-              index3 += num7;
+              numArray7[index2, index3] = (float) ((double) normalizedImageData[index4, index6] * (1.0 - (double) num24) * (1.0 - (double) num25) + (double) normalizedImageData[index5, index6] * (double) num24 * (1.0 - (double) num25) + (double) normalizedImageData[index5, index7] * (double) num24 * (double) num25 + (double) normalizedImageData[index4, index7] * (1.0 - (double) num24) * (double) num25);
+              index3 += incY;
             }
-            index2 += num6;
+            index2 += incX;
           }
+
           float[] yvals = new float[height];
           for (int index3 = 0; index3 < height; ++index3)
             yvals[index3] = 0.0f;
-          int index8 = num4;
-          while (index8 < num5)
+          int index8 = topEdge;
+          while (index8 < bottomEdge)
           {
             int num20 = 0;
-            int index3 = num2;
-            while (index3 < num3)
+            int index3 = leftEdge;
+            while (index3 < rightEdge)
             {
               yvals[index8] += numArray7[index3, index8];
               ++num20;
-              index3 += num6;
+              index3 += incX;
             }
             yvals[index8] /= (float) num20;
-            index8 += num7;
+            index8 += incY;
           }
           float num26 = -1f;
           float num27 = -1f;
-          for (int index3 = num4; index3 < num5; ++index3)
+          for (int index3 = topEdge; index3 < bottomEdge; ++index3)
           {
             if ((double) yvals[index3] > (double) num26)
             {
@@ -711,7 +802,7 @@ namespace Bahtinov_grabber_autofocus
         }
       }
 
-      DrawLines(val1, val2, numArray3, numArray4);
+      DrawLines(halfWidth, halfHeight, numArray3, numArray4);
 
       this.centered = false;
       if (!this.RotatingFocusserCheckBox.Checked)
@@ -719,8 +810,9 @@ namespace Bahtinov_grabber_autofocus
       bahtinov_angles = new float[3];
     }
 
-    private void DrawLines(float val1, float val2, float[] numArray3, float[] numArray4)
+    private void DrawLines(float val1, float val2, float[] bahtinovAngles, float[] numArray4)
     {
+      // Take bahtinov angles and draw the 3 angle lines
       int yzero = 1;
       int penWidth = 1;
       Pen pen = new Pen(Color.Yellow, (float)penWidth);
@@ -738,10 +830,10 @@ namespace Bahtinov_grabber_autofocus
       for (int index = 0; index < 3; ++index)
       {
         float num13 = Math.Min(val1, val2);
-        float x1 = val1 + -num13 * (float)Math.Cos((double)numArray3[index]) + (numArray4[index] - val2) * (float)Math.Sin((double)numArray3[index]);
-        float x2 = val1 + num13 * (float)Math.Cos((double)numArray3[index]) + (numArray4[index] - val2) * (float)Math.Sin((double)numArray3[index]);
-        float num18 = val2 + -num13 * (float)Math.Sin((double)numArray3[index]) + (float)-((double)numArray4[index] - (double)val2) * (float)Math.Cos((double)numArray3[index]);
-        float num19 = val2 + num13 * (float)Math.Sin((double)numArray3[index]) + (float)-((double)numArray4[index] - (double)val2) * (float)Math.Cos((double)numArray3[index]);
+        float x1 = val1 + -num13 * (float)Math.Cos((double)bahtinovAngles[index]) + (numArray4[index] - val2) * (float)Math.Sin((double)bahtinovAngles[index]);
+        float x2 = val1 + num13 * (float)Math.Cos((double)bahtinovAngles[index]) + (numArray4[index] - val2) * (float)Math.Sin((double)bahtinovAngles[index]);
+        float num18 = val2 + -num13 * (float)Math.Sin((double)bahtinovAngles[index]) + (float)-((double)numArray4[index] - (double)val2) * (float)Math.Cos((double)bahtinovAngles[index]);
+        float num19 = val2 + num13 * (float)Math.Sin((double)bahtinovAngles[index]) + (float)-((double)numArray4[index] - (double)val2) * (float)Math.Cos((double)bahtinovAngles[index]);
         if (index == 0)
         {
           float num20 = x1;
@@ -783,6 +875,8 @@ namespace Bahtinov_grabber_autofocus
         }
         graphics.DrawLine(pen, x1, (float)imageHeight - num18 + (float)yzero, x2, (float)imageHeight - num19 + (float)yzero);
       }
+
+
       float x3 = (float)(-((double)num16 - (double)num17) / ((double)num14 - (double)num15));
       float num36 = num14 * x3 + num16;
       pen.Color = Color.Blue;
@@ -852,13 +946,15 @@ namespace Bahtinov_grabber_autofocus
       if (this.text_on_bitmap)
         graphics.DrawString(str2, font, (Brush)solidBrush, (PointF)new Point(10, 20));
       this.AverageFocusErrorLabel.Text = str2;
-      float num57 = 57.29578f;
+      float num57 = 57.29578f; // 57.29578 = 180 / PI = 1 Rad in degrees
       float num58 = (float)Math.PI / 180f;
-      float num59 = Math.Abs((float)(((double)numArray3[2] - (double)numArray3[0]) / 2.0));
+      float num59 = Math.Abs((float)(((double)bahtinovAngles[2] - (double)bahtinovAngles[0]) / 2.0));
       string str3 = (num59 * num57).ToString("F0") + " degree Bahtinov";
-      float num60 = (float)(9.0 / 32.0 * ((double)(float)this.DiameterNumericUpDown.Value / ((double)(float)this.FocalLengthNumericUpDown.Value * (double)(float)this.PixelSizeNumericUpDown.Value)) * (1.0 + Math.Cos(45.0 * (double)num58) * (1.0 + Math.Tan((double)num59))));
+      float num60 = (float)(9.0 / 32.0 * ((double)(float)this.DiameterNumericUpDown.Value / ((double)(float)this.FocalLengthNumericUpDown.Value *
+        (double)(float)this.PixelSizeNumericUpDown.Value)) * (1.0 + Math.Cos(45.0 * (double)num58) * (1.0 + Math.Tan((double)num59))));
       this.MaskTypeLabel.Text = str3;
-      this.MaskAnglesLabel.Text = "angles: " + (num57 * numArray3[0]).ToString("F1") + " " + (num57 * numArray3[1]).ToString("F1") + " " + (num57 * numArray3[2]).ToString("F1");
+      this.MaskAnglesLabel.Text = "angles: " + (num57 * bahtinovAngles[0]).ToString("F1") + " " + (num57 * bahtinovAngles[1]).ToString("F1") + " " +
+        (num57 * bahtinovAngles[2]).ToString("F1");
       float num61 = num42 * num41 / num60;
       string str4 = "calculated absolute focus error: " + num61.ToString("F2") + " microns";
       this.logMessage(str4);

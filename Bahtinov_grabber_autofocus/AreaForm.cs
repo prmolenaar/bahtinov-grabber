@@ -62,7 +62,15 @@ namespace Bahtinov_grabber_autofocus
       this.pictureBox.BorderStyle = BorderStyle.FixedSingle;
       this.Controls.Add((Control)this.pictureBox);
       ((ISupportInitialize)this.pictureBox).EndInit();
+      this.FormClosing += new FormClosingEventHandler(this.CloseWindowOverride);
       this.ResumeLayout(false);
+    }
+
+    private void CloseWindowOverride(object sender, FormClosingEventArgs e)
+    {
+      // Prevent window from closing completely and getting disposed
+      e.Cancel = true;
+      this.Hide();
     }
 
     private void BrowseButton_Click(object sender, EventArgs e)

@@ -54,26 +54,6 @@ internal class lq
     }
   }
 
-  public static void rmatrixlqunpackl(ref double[,] a, int m, int n, ref double[,] l)
-  {
-    if (m <= 0 | n <= 0)
-      return;
-    l = new double[m - 1 + 1, n - 1 + 1];
-    for (int index = 0; index <= n - 1; ++index)
-      l[0, index] = 0.0;
-    for (int index1 = 1; index1 <= m - 1; ++index1)
-    {
-      for (int index2 = 0; index2 <= n - 1; ++index2)
-        l[index1, index2] = l[0, index2];
-    }
-    for (int val1 = 0; val1 <= m - 1; ++val1)
-    {
-      int num = Math.Min(val1, n - 1);
-      for (int index = 0; index <= num; ++index)
-        l[val1, index] = a[val1, index];
-    }
-  }
-
   public static void lqdecomposition(ref double[,] a, int m, int n, ref double[] tau)
   {
     double[] numArray1 = new double[0];
@@ -126,22 +106,5 @@ internal class lq
       v[1] = 1.0;
       reflections.applyreflectionfromtheright(ref q, tau[n1], ref v, 1, qrows, n1, n, ref work);
     }
-  }
-
-  public static void lqdecompositionunpacked(double[,] a, int m, int n, ref double[,] l, ref double[,] q)
-  {
-    double[] tau = new double[0];
-    a = (double[,]) a.Clone();
-    if (n <= 0)
-      return;
-    q = new double[n + 1, n + 1];
-    l = new double[m + 1, n + 1];
-    lq.lqdecomposition(ref a, m, n, ref tau);
-    for (int index1 = 1; index1 <= m; ++index1)
-    {
-      for (int index2 = 1; index2 <= n; ++index2)
-        l[index1, index2] = index2 <= index1 ? a[index1, index2] : 0.0;
-    }
-    lq.unpackqfromlq(ref a, m, n, ref tau, n, ref q);
   }
 }
